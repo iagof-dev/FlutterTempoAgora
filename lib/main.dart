@@ -17,7 +17,8 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  final txtCidade = TextEditingController();
+  final txtLon = TextEditingController();
+  final txtLat = TextEditingController();
 
   LocationData? currentLocation;
   Location location = Location();
@@ -33,18 +34,6 @@ class _MyAppState extends State<MyApp> {
   bool isLoading = false;
 
   void verifyWeather() async {
-    if (lat.isEmpty || lon.isEmpty) {
-      print('Latitude e Longitude não informados');
-      Fluttertoast.showToast(
-          msg: "Houve um erro!\nLocalização não buscada.",
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.TOP,
-          timeInSecForIosWeb: 1,
-          backgroundColor: Colors.red,
-          textColor: Colors.white,
-          fontSize: 16.0);
-      return;
-    }
     if (isLoading) {
       Fluttertoast.showToast(
           msg: "Aguarde a busca da localização.",
@@ -57,9 +46,35 @@ class _MyAppState extends State<MyApp> {
       return;
     }
 
+    if (lat.isEmpty || lon.isEmpty) {
+      if (txtLat.text.isEmpty ||
+          txtLat.text == '' && txtLon.text.isEmpty ||
+          txtLon.text == '') {
+        Fluttertoast.showToast(
+            msg: "Houve um erro!\nLocalização não buscada/informada.",
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.TOP,
+            timeInSecForIosWeb: 1,
+            backgroundColor: Colors.red,
+            textColor: Colors.white,
+            fontSize: 16.0);
+        return;
+      }
+      lat = txtLat.text;
+      lon = txtLon.text;
+    }
+
+    Fluttertoast.showToast(
+        msg: "Buscando clima...",
+        toastLength: Toast.LENGTH_LONG,
+        gravity: ToastGravity.TOP,
+        timeInSecForIosWeb: 1,
+        backgroundColor: Colors.orange,
+        textColor: Colors.white,
+        fontSize: 16.0);
+
     var url =
         'https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m';
-    print(url);
     var response = await http.get(Uri.parse(url));
     var jsonResponse =
         convert.jsonDecode(response.body) as Map<String, dynamic>;
@@ -74,7 +89,6 @@ class _MyAppState extends State<MyApp> {
           backgroundColor: Colors.red,
           textColor: Colors.white,
           fontSize: 16.0);
-      print('erro na requisição (status code: ${response.statusCode})');
       return;
     }
 
@@ -83,9 +97,6 @@ class _MyAppState extends State<MyApp> {
       humidity = '${jsonResponse['current']['relative_humidity_2m'].round()} %';
       wind = '${jsonResponse['current']['wind_speed_10m'].round()} KM/H';
     });
-
-    print(
-        'Sucesso!\nTemperatura: ${jsonResponse['current']['temperature_2m']}\nUmidade: ${jsonResponse['current']['relative_humidity_2m']}\nVento: ${jsonResponse['current']['wind_speed_10m']}');
   }
 
   Future<void> getGeoLoc() async {
@@ -120,17 +131,18 @@ class _MyAppState extends State<MyApp> {
       isLoading = true;
     });
     Fluttertoast.showToast(
-        msg: "Obtendo localização do dispositivo, Aguarde.",
+        msg: "Obtendo localização do dispositivo...",
         toastLength: Toast.LENGTH_LONG,
         gravity: ToastGravity.TOP,
         timeInSecForIosWeb: 1,
         backgroundColor: Colors.orange,
         textColor: Colors.white,
         fontSize: 16.0);
-    print('Obtendo localização do dispositivo...');
 
     await getGeoLoc();
 
+    txtLat.text = lat;
+    txtLon.text = lon;
     Fluttertoast.showToast(
         msg: "Localização Obtida com sucesso!\n($lat, $lon)",
         toastLength: Toast.LENGTH_SHORT,
@@ -158,11 +170,17 @@ class _MyAppState extends State<MyApp> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(10),
-                  child: TextField(
-                    controller: txtCidade,
-                    decoration:
-                        const InputDecoration(labelText: 'Digite a cidade'),
-                  ),
+                  child: Column(children: [
+                    TextField(
+                      controller: txtLon,
+                      decoration:
+                          const InputDecoration(labelText: 'Longitude:'),
+                    ),
+                    TextField(
+                      controller: txtLat,
+                      decoration: const InputDecoration(labelText: 'Latitude:'),
+                    ),
+                  ]),
                 ),
                 Container(
                   padding: const EdgeInsets.fromLTRB(0, 1, 0, 12),
