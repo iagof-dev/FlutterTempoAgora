@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert' as convert;
 import 'package:http/http.dart' as http;
+import 'package:location/location.dart';
 
 void main() {
   runApp(const MyApp());
@@ -11,6 +12,9 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final txtCidade = TextEditingController();
+
+    LocationData? _currentLocation;
+    Location location = Location();
 
     String temperature = '0 °C';
     String humidity = '0%';
@@ -25,20 +29,45 @@ class MyApp extends StatelessWidget {
       print(txtCidade.text);
     }
 
+    Future<void> _getLocation() async {
+      bool _serviceEnabled;
+      PermissionStatus _permissionGranted;
+
+      _serviceEnabled = await location.serviceEnabled();
+      if (!_serviceEnabled) {
+        _serviceEnabled = await location.requestService();
+        if (!_serviceEnabled) {
+          return;
+        }
+      }
+
+      _permissionGranted = await location.hasPermission();
+      if (_permissionGranted == PermissionStatus.denied) {
+        _permissionGranted = await location.requestPermission();
+        if (_permissionGranted != PermissionStatus.granted) {
+          return;
+        }
+      }
+
+      _currentLocation = await location.getLocation();
+    }
+
     void getLocation() async {
       print('Obtendo localização do dispositivo...');
-      var url = Uri.https(
-          'marciossupiais.shop', '/tcc/alunos/listar/', {'q': '{http}'});
-      var response = await http.get(url);
-      if (response.statusCode != 200 || response.body.isEmpty) {
-        print('erro na requisição');
-        return;
-      }
-      var jsonResponse =
-          convert.jsonDecode(response.body) as Map<String, dynamic>;
-      for (var item in jsonResponse['DATA']) {
-        print(item['nome']);
-      }
+      // var url = Uri.https(
+      //     'marciossupiais.shop', '/tcc/alunos/listar/', {'q': '{http}'});
+      // var response = await http.get(url);
+      // if (response.statusCode != 200 || response.body.isEmpty) {
+      //   print('erro na requisição');
+      //   return;
+      // }
+      // var jsonResponse =
+      //     convert.jsonDecode(response.body) as Map<String, dynamic>;
+      // for (var item in jsonResponse['DATA']) {
+      //   print(item['nome']);
+      // }
+      await _getLocation();
+      print(_currentLocation);
     }
 
     return MaterialApp(
@@ -146,7 +175,7 @@ class MyApp extends StatelessWidget {
                   ),
                 ),
               ],
-            )
+            ),
           ],
         ),
       ),
