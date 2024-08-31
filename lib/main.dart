@@ -2,74 +2,151 @@ import 'package:flutter/material.dart';
 import 'dart:convert' as convert;
 import 'package:http/http.dart' as http;
 import 'package:location/location.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'dart:math';
 
 void main() {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
   @override
-  Widget build(BuildContext context) {
-    final txtCidade = TextEditingController();
+  _MyAppState createState() => _MyAppState();
+}
 
-    LocationData? _currentLocation;
-    Location location = Location();
+class _MyAppState extends State<MyApp> {
+  final txtCidade = TextEditingController();
 
-    String temperature = '0 °C';
-    String humidity = '0%';
-    String wind = '0 KM/H';
+  LocationData? currentLocation;
+  Location location = Location();
 
-    void verifyWeather() {
-      if (txtCidade.text.isEmpty) {
-        print('Cidade não informada');
+  String temperature = '0 °C';
+  String humidity = '0%';
+  String wind = '0 KM/H';
+
+  String lon = '';
+  String lat = '';
+  String apiKey = '';
+
+  bool isLoading = false;
+
+  void verifyWeather() async {
+    if (lat.isEmpty || lon.isEmpty) {
+      print('Latitude e Longitude não informados');
+      Fluttertoast.showToast(
+          msg: "Houve um erro!\nLocalização não buscada.",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.TOP,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+          fontSize: 16.0);
+      return;
+    }
+    if (isLoading) {
+      Fluttertoast.showToast(
+          msg: "Aguarde a busca da localização.",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.TOP,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+          fontSize: 16.0);
+      return;
+    }
+
+    var url =
+        'https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m';
+    print(url);
+    var response = await http.get(Uri.parse(url));
+    var jsonResponse =
+        convert.jsonDecode(response.body) as Map<String, dynamic>;
+
+    if (response.statusCode != 200 || response.body.isEmpty) {
+      Fluttertoast.showToast(
+          msg:
+              "Houve um erro!\nRequisição falhou! (${response.statusCode})\n ${jsonResponse['reason']}.",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.TOP,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+          fontSize: 16.0);
+      print('erro na requisição (status code: ${response.statusCode})');
+      return;
+    }
+
+    setState(() {
+      temperature = '${jsonResponse['current']['temperature_2m'].round()} °C';
+      humidity = '${jsonResponse['current']['relative_humidity_2m'].round()} %';
+      wind = '${jsonResponse['current']['wind_speed_10m'].round()} KM/H';
+    });
+
+    print(
+        'Sucesso!\nTemperatura: ${jsonResponse['current']['temperature_2m']}\nUmidade: ${jsonResponse['current']['relative_humidity_2m']}\nVento: ${jsonResponse['current']['wind_speed_10m']}');
+  }
+
+  Future<void> getGeoLoc() async {
+    bool serviceEnabled;
+    PermissionStatus permissionGranted;
+
+    serviceEnabled = await location.serviceEnabled();
+    if (!serviceEnabled) {
+      serviceEnabled = await location.requestService();
+      if (!serviceEnabled) {
         return;
       }
-      print('Verificando clima...');
-      print(txtCidade.text);
     }
 
-    Future<void> _getLocation() async {
-      bool _serviceEnabled;
-      PermissionStatus _permissionGranted;
-
-      _serviceEnabled = await location.serviceEnabled();
-      if (!_serviceEnabled) {
-        _serviceEnabled = await location.requestService();
-        if (!_serviceEnabled) {
-          return;
-        }
+    permissionGranted = await location.hasPermission();
+    if (permissionGranted == PermissionStatus.denied) {
+      permissionGranted = await location.requestPermission();
+      if (permissionGranted != PermissionStatus.granted) {
+        return;
       }
-
-      _permissionGranted = await location.hasPermission();
-      if (_permissionGranted == PermissionStatus.denied) {
-        _permissionGranted = await location.requestPermission();
-        if (_permissionGranted != PermissionStatus.granted) {
-          return;
-        }
-      }
-
-      _currentLocation = await location.getLocation();
     }
 
-    void getLocation() async {
-      print('Obtendo localização do dispositivo...');
-      // var url = Uri.https(
-      //     'marciossupiais.shop', '/tcc/alunos/listar/', {'q': '{http}'});
-      // var response = await http.get(url);
-      // if (response.statusCode != 200 || response.body.isEmpty) {
-      //   print('erro na requisição');
-      //   return;
-      // }
-      // var jsonResponse =
-      //     convert.jsonDecode(response.body) as Map<String, dynamic>;
-      // for (var item in jsonResponse['DATA']) {
-      //   print(item['nome']);
-      // }
-      await _getLocation();
-      print(_currentLocation);
-    }
+    currentLocation = await location.getLocation();
+    setState(() {
+      lat = currentLocation!.latitude.toString();
+      lon = currentLocation!.longitude.toString();
+    });
+  }
 
+  void getLocation() async {
+    setState(() {
+      isLoading = true;
+    });
+    Fluttertoast.showToast(
+        msg: "Obtendo localização do dispositivo, Aguarde.",
+        toastLength: Toast.LENGTH_LONG,
+        gravity: ToastGravity.TOP,
+        timeInSecForIosWeb: 1,
+        backgroundColor: Colors.orange,
+        textColor: Colors.white,
+        fontSize: 16.0);
+    print('Obtendo localização do dispositivo...');
+
+    await getGeoLoc();
+
+    Fluttertoast.showToast(
+        msg: "Localização Obtida com sucesso!\n($lat, $lon)",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.TOP,
+        timeInSecForIosWeb: 1,
+        backgroundColor: Colors.green,
+        textColor: Colors.white,
+        fontSize: 16.0);
+
+    setState(() {
+      isLoading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
@@ -94,15 +171,15 @@ class MyApp extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       SizedBox(
-                          width: 150,
+                          width: 200,
                           child: ElevatedButton(
-                              onPressed: () => verifyWeather(),
+                              onPressed: verifyWeather,
                               child: const Text('Buscar'))),
                       SizedBox(
-                          width: 150,
+                          width: 200,
                           child: ElevatedButton(
-                              onPressed: () => getLocation(),
-                              child: const Text('Localização')))
+                              onPressed: getLocation,
+                              child: const Text('Obter Localização')))
                     ],
                   ),
                 )
