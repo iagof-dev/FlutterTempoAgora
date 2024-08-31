@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:convert' as convert;
+import 'package:http/http.dart' as http;
 
 void main() {
   runApp(const MyApp());
@@ -23,8 +25,20 @@ class MyApp extends StatelessWidget {
       print(txtCidade.text);
     }
 
-    void getLocation() {
+    void getLocation() async {
       print('Obtendo localização do dispositivo...');
+      var url = Uri.https(
+          'marciossupiais.shop', '/tcc/alunos/listar/', {'q': '{http}'});
+      var response = await http.get(url);
+      if (response.statusCode != 200 || response.body.isEmpty) {
+        print('erro na requisição');
+        return;
+      }
+      var jsonResponse =
+          convert.jsonDecode(response.body) as Map<String, dynamic>;
+      for (var item in jsonResponse['DATA']) {
+        print(item['nome']);
+      }
     }
 
     return MaterialApp(
@@ -45,7 +59,7 @@ class MyApp extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: EdgeInsets.fromLTRB(0, 1, 0, 12),
+                  padding: const EdgeInsets.fromLTRB(0, 1, 0, 12),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
