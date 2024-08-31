@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  MyApp({super.key});
-
+  const MyApp({super.key});
   @override
   Widget build(BuildContext context) {
     final txtCidade = TextEditingController();
@@ -45,17 +44,24 @@ class MyApp extends StatelessWidget {
                         const InputDecoration(labelText: 'Digite a cidade'),
                   ),
                 ),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    ElevatedButton(
-                        onPressed: () => verifyWeather(),
-                        child: const Text('Buscar')),
-                    ElevatedButton(
-                        onPressed: () => getLocation(),
-                        child: const Text('Localização'))
-                  ],
+                Container(
+                  padding: EdgeInsets.fromLTRB(0, 1, 0, 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      SizedBox(
+                          width: 150,
+                          child: ElevatedButton(
+                              onPressed: () => verifyWeather(),
+                              child: const Text('Buscar'))),
+                      SizedBox(
+                          width: 150,
+                          child: ElevatedButton(
+                              onPressed: () => getLocation(),
+                              child: const Text('Localização')))
+                    ],
+                  ),
                 )
               ],
             ),
