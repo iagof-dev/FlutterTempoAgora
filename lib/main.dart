@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:ft_tempoagora/helpers/db.dart';
 import 'dart:convert' as convert;
 import 'package:http/http.dart' as http;
 import 'package:location/location.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'dart:math';
+import 'package:path/path.dart';
 
 void main() {
   runApp(const MyApp());
@@ -30,6 +31,8 @@ class _MyAppState extends State<MyApp> {
   String lon = '';
   String lat = '';
   String apiKey = '';
+
+  Future<List<Map<String, dynamic>>> historyWeather = Future.value([]);
 
   bool isLoading = false;
 
@@ -157,6 +160,43 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
+  void SqlLiteTest_Insert() async {
+    debugPrint('Inserindo...');
+    if (DB.instance.database != null) {
+      DB.instance.database.then((db) async {
+        debugPrint('Banco de Dados está criado!');
+        await DbController().insert('weatherHistory', {
+          'temp': 25,
+          'humidity': 80,
+          'wind': 10,
+          'time': DateTime.now().toIso8601String()
+        });
+      });
+      debugPrint('Aparentemente inserido');
+    } else {
+      debugPrint('DB SQLITE não inicializado.');
+    }
+  }
+
+  void SqlLiteTest_ListAll() async {
+    debugPrint('Consultando...');
+    if (DB.instance.database != null) {
+      debugPrint('Banco de Dados está criado!');
+      var response = await DbController().queryOrder('weatherHistory');
+      debugPrint(response.toString());
+    } else {
+      debugPrint('DB SQLITE não inicializado.');
+    }
+    updateHistory();
+  }
+
+  void updateHistory() async {
+    var result = await DbController().queryOrder('weatherHistory');
+    setState(() {
+      historyWeather = Future.value(result);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -166,6 +206,16 @@ class _MyAppState extends State<MyApp> {
         ),
         body: Column(
           children: [
+            Row(
+              children: [
+                ElevatedButton(
+                    onPressed: SqlLiteTest_Insert,
+                    child: Text('SqlLiteTest_Insert')),
+                ElevatedButton(
+                    onPressed: SqlLiteTest_ListAll,
+                    child: Text('SqlLiteTest_ListAll'))
+              ],
+            ),
             Column(
               children: [
                 Container(
@@ -271,6 +321,62 @@ class _MyAppState extends State<MyApp> {
                 ),
               ],
             ),
+            const Text(
+              'Histórico:',
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Text(
+                    'Temp',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  Text(
+                    'Humidity',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  Text(
+                    'Wind',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  Text(
+                    'Tempo',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ],
+              ),
+            ),
+            FutureBuilder(
+                future: historyWeather,
+                builder: (ctx, snp) {
+                  if (snp.connectionState == ConnectionState.waiting) {
+                    return CircularProgressIndicator();
+                  } else if (snp.hasError) {
+                    return Text("Erro: ${snp.error}");
+                  } else if (!snp.hasData || snp.data!.isEmpty) {
+                    return Text("Sem dados registrados");
+                  }
+                  final data = snp.data!;
+                  return Expanded(
+                    child: ListView.builder(
+                      itemCount: data.length,
+                      itemBuilder: (context, index) {
+                        final row = data[index];
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            Text(join(row['temp'].toString(), "°C")),
+                            Text(row['humidity'].toString()),
+                            Text(row['wind'].toString()),
+                            Text(row['time'].toString()),
+                          ],
+                        );
+                      },
+                    ),
+                  );
+                }),
           ],
         ),
       ),
